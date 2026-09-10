@@ -4,9 +4,20 @@
   On an iOS build, EDM4U adds `pod 'Asalyze'` to the generated Xcode project's Podfile and runs
   `pod install`. Requires EDM4U in the project (com.google.external-dependency-manager).
 -->
+<!--
+  KEEP THIS PIN IN STEP WITH package.json. Unity does NOT vendor the Swift the way the Flutter plugin
+  does — it pulls the CocoaPod — so this line, not the .unitypackage, decides which SDK a Unity app
+  actually ships. It has drifted twice: once sitting at `~> 1.3` while the package said 2.0.0, and again
+  at `~> 2.2` while the package said 3.1.6, which would have installed a version with the iOS 16.0-17.1
+  launch crash in it.
+
+  Pinned to `~> 3.1.6` rather than `~> 3.1` deliberately: the looser form still admits 3.1.0-3.1.5, and
+  every one of those reads Transaction.currencyCode and faults. This floors it at the fix while still
+  taking future 3.1.x patches.
+-->
 <dependencies>
   <iosPods>
-    <iosPod name="Asalyze" version="~> 2.2" minTargetSdk="15.0" addToAllTargets="false">
+    <iosPod name="Asalyze" version="~> 3.1.6" minTargetSdk="15.0" addToAllTargets="false">
       <sources>
         <source>https://github.com/CocoaPods/Specs</source>
       </sources>
