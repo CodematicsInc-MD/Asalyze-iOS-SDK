@@ -14,7 +14,16 @@ import StoreKit
 /// Asalyze.configure(apiKey: "sk_…", appId: "com.your.app")
 /// ```
 public enum Asalyze {
-    private static var runtime: Runtime?
+    /// The runtime is read from whatever thread the host happens to call us on — AdMob's
+    /// `paidEventHandler` fires on its own — while `configure` writes it from another. An unsynchronized
+    /// class reference read against a concurrent write is the same defect that took the StoreKit observer
+    /// down (see StoreKitObserver's `lock`), so the one mutable field in the public surface is guarded.
+    private static let runtimeLock = NSLock()
+    private static var _runtime: Runtime?
+    private static var runtime: Runtime? {
+        get { runtimeLock.lock(); defer { runtimeLock.unlock() }; return _runtime }
+        set { runtimeLock.lock(); defer { runtimeLock.unlock() }; _runtime = newValue }
+    }
 
     /// Configure the SDK. Call once, as early as possible (App init / didFinishLaunching).
     /// - Parameters:
@@ -33,7 +42,20 @@ public enum Asalyze {
 
 
 
-    /// Optionally tag events with your own user id (see docs — enables cross-device reconciliation).
+    /// Tag this device with YOUR OWN id for the signed-in user — whatever your app already calls them
+    /// (your backend's user id, a Firebase uid, an account number). Asalyze never generates or discovers
+    /// it; you pass it, typically right after your sign-in completes.
+    ///
+    /// It is opaque to us and is used for exactly one thing: finding this install in User Journey by
+    /// searching for your id, so our numbers can be reconciled against your own system. It never
+    /// attributes, joins revenue or dedupes, and two devices sharing one account is expected.
+    ///
+    /// Reported immediately, not on the next heartbeat. Pass `nil` on sign-out to clear it.
+    ///
+    /// ```swift
+    /// Asalyze.setUserId(session.user.id)   // after sign-in
+    /// Asalyze.setUserId(nil)               // on sign-out
+    /// ```
     public static func setUserId(_ userId: String?) {
         runtime?.userId = userId
     }

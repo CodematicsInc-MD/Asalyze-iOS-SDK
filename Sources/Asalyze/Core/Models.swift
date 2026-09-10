@@ -16,7 +16,6 @@ public struct Config {
     }
 }
 
-/// Offer applied to a purchase — mirrors the backend `offer_type` taxonomy.
 /// What kind of in-app purchase this is, read from StoreKit's `productType` per transaction.
 ///
 /// It decides how the purchase is counted: a consumable bought ten times is ten sales and no

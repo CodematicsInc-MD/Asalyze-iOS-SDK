@@ -7,13 +7,6 @@ enum Storage {
     private static let service = "com.asalyze.tracker"
     private static let account = "install_id"
 
-    static func installId() -> String {
-        if let existing = readKeychain() { return existing }
-        let id = UUID().uuidString
-        writeKeychain(id)
-        return id
-    }
-
     private static let firstRunKey = "com.asalyze.installed"
 
     /// Resolve the install identity and whether THIS launch is a reinstall. The install id lives in the
@@ -60,11 +53,20 @@ enum Storage {
     //     the backend also dedups on transactionId, this just avoids redundant network calls). ---
     private static let sentTxnsKey = "com.asalyze.sentTransactionIds"
 
+    /// UserDefaults is itself thread-safe, but `markTransactionSent` is a read-modify-WRITE spread over
+    /// three separate calls to it. Two threads can both read the same array, each append their own id,
+    /// and the second write erase the first — so an id is silently dropped and that purchase is re-sent
+    /// on every launch from then on, which is the exact redundant traffic this cache exists to prevent.
+    /// Concurrent reporting is normal here (see StoreKitObserver's sweeps), so the sequence needs a lock.
+    private static let sentTxnsLock = NSLock()
+
     static func hasSentTransaction(_ id: String) -> Bool {
-        (UserDefaults.standard.stringArray(forKey: sentTxnsKey) ?? []).contains(id)
+        sentTxnsLock.lock(); defer { sentTxnsLock.unlock() }
+        return (UserDefaults.standard.stringArray(forKey: sentTxnsKey) ?? []).contains(id)
     }
 
     static func markTransactionSent(_ id: String) {
+        sentTxnsLock.lock(); defer { sentTxnsLock.unlock() }
         var ids = UserDefaults.standard.stringArray(forKey: sentTxnsKey) ?? []
         guard !ids.contains(id) else { return }
         ids.append(id)

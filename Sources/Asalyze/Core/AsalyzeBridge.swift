@@ -7,8 +7,9 @@ import Foundation
 /// as their **backend string values** (the same taxonomy as the REST API and the Flutter bridge), so
 /// callers never need the Swift `Offer` / `AdFormat` enums.
 ///
-/// AdServices attribution and StoreKit 2 purchase observation happen automatically after
-/// ``configure(apiKey:appId:endpoint:)``. These methods cover ad revenue, custom events and identity.
+/// The heavy lifting — AdServices attribution and StoreKit 2 purchase observation — still happens
+/// automatically after ``configure(apiKey:appId:endpoint:)``; these methods only cover the manual
+/// reporting paths (ad revenue, custom events) and identity.
 @objc(AsalyzeBridge)
 public final class AsalyzeBridge: NSObject {
     /// Configure once at launch. `endpoint` is optional — pass `nil`/empty for production.
@@ -38,10 +39,4 @@ public final class AsalyzeBridge: NSObject {
         Asalyze.trackEvent(name, valueUsd: valueUsd?.doubleValue)
     }
 
-    /// Report a subscription transition the SDK cannot observe itself — rare, since StoreKit 2 and
-    /// Apple's server notifications carry almost everything.
-    ///
-    /// Pass `transactionId` whenever you have it: it is what stops the same money being counted twice,
-    /// since the backend claims a transaction once. Without it a priced event is booked unconditionally.
-    ///
 }

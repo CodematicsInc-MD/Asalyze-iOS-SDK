@@ -10,13 +10,37 @@ import UIKit
 /// The SDK's own version, sent with every install. Reading it directly beats inferring it from which
 /// fields a payload happens to carry: that only works while every release adds one, and cannot tell
 /// two releases apart once both send the same set.
-let asalyzeSDKVersion = "3.1.3"
+let asalyzeSDKVersion = "3.1.4"
 
 final class Runtime {
     let config: Config
     let installId: String
     let isReinstall: Bool
-    var userId: String?
+
+    /// The app's OWN id for the signed-in user, from `Asalyze.setUserId`.
+    ///
+    /// Behind the same lock as everything else shared here: the host calls `setUserId` from whatever
+    /// thread its sign-in completes on, while `beat()` may be reading it on another.
+    ///
+    /// Setting it REPORTS it immediately rather than waiting for the next heartbeat. Sign-in is exactly
+    /// when someone opens the dashboard to look for that user, and the heartbeat is throttled to a day —
+    /// so waiting could mean the id shows up tomorrow. `nil` is a sign-out and is reported too, as an
+    /// empty string, because "this device is no longer that person" is information we would otherwise
+    /// keep serving as fact.
+    private let userIdLock = NSLock()
+    private var _userId: String?
+    var userId: String? {
+        get { userIdLock.lock(); defer { userIdLock.unlock() }; return _userId }
+        set {
+            userIdLock.lock()
+            let changed = _userId != newValue
+            _userId = newValue
+            userIdLock.unlock()
+            guard changed else { return }
+            let id = installId
+            Task { await api.ping(installId: id, userId: newValue ?? "") }
+        }
+    }
 
     private let api: APIClient
     private let storeKit: StoreKitObserver
@@ -53,7 +77,7 @@ final class Runtime {
                                       isReinstall: isReinstall, appVersion: ctx.version, appBuild: ctx.build, installedAt: ctx.installedAt,
                                       deviceRegion: ctx.region, osVersion: ctx.osVersion, legacyReceipt: ctx.legacyReceipt,
                                       appTransactionJws: ctx.appTransactionJws, sdkVersion: asalyzeSDKVersion,
-                                      tokenError: attribution.error)
+                                      tokenError: attribution.error, userId: userId, deviceModel: ctx.deviceModel)
         }
         // 2. Observe StoreKit 2 transactions for the app's lifetime. Mark a transaction as sent only
         //    after the report lands — so a failed POST is retried from `Transaction.all` next launch
@@ -64,6 +88,11 @@ final class Runtime {
             Task {
                 if await self.api.recordSubscription(tx, installId: self.installId) {
                     Storage.markTransactionSent(tx.transactionId)
+                } else {
+                    // Hand the id back so a foreground rescan can try again in THIS session. Without
+                    // this the observer's claim would hold until the app is relaunched, turning one
+                    // dropped connection into a purchase that goes unreported for the rest of the run.
+                    self.storeKit.release(tx.transactionId)
                 }
             }
         }
@@ -90,10 +119,17 @@ final class Runtime {
         // Fire once for THIS foreground too: the app has just become active, which is exactly the
         // event being recorded, and waiting for the next one would miss single-session users entirely.
         beat()
+        // The FIRST notification after registering belongs to the launch that just called start(), whose
+        // backfill sweep is already running — rescanning for it is the same walk of Transaction.all
+        // twice, for nothing. Every LATER foreground is a genuine return to the app and does get one.
+        // Only ever read and written on the main thread, where UIApplication posts its lifecycle
+        // notifications.
+        var isLaunchForeground = true
         foregroundObserver = NotificationCenter.default.addObserver(
             forName: UIApplication.didBecomeActiveNotification, object: nil, queue: nil
         ) { [weak self] _ in
             self?.beat()
+            if isLaunchForeground { isLaunchForeground = false; return }
             // A purchase made in this session never reaches Transaction.updates, and the payment sheet
             // restores the app as it closes — so this is where an unreported sale gets caught.
             self?.storeKit.rescan()
@@ -108,10 +144,23 @@ final class Runtime {
         // signal measured in days; a retry loop costs the user's battery.
         Storage.markPinged()
         let id = installId
-        Task { await api.ping(installId: id) }
+        let user = userId
+        Task { await api.ping(installId: id, userId: user) }
     }
 
     func trackAdRevenue(value: Double, currency: String, format: AdFormat) {
+        // A non-finite value would take the host app down, not just lose the impression.
+        //
+        // This number comes straight from AdMob's paidEventHandler, and `GADAdValue.value` is an
+        // NSDecimalNumber that can be `.notANumber` — an unpriced or no-fill impression. `.doubleValue`
+        // turns that into a Swift NaN, and NaN is not a JSON number: JSONSerialization does not THROW on
+        // it, it raises an ObjC NSInvalidArgumentException, which `try?` cannot catch and which
+        // terminates the process. An analytics SDK crashing its host over a value it could not express
+        // is indefensible, so the impression is dropped and noted instead.
+        guard value.isFinite else {
+            NSLog("[Asalyze] ignoring ad revenue with a non-finite value")
+            return
+        }
         // Read at the impression, not at install: eCPM is set by where the ad was served, and a user
         // who has travelled since installing would otherwise have every impression priced against the
         // country they signed up in.
@@ -123,6 +172,8 @@ final class Runtime {
     }
 
     func trackCustomEvent(name: String, value: Double?) {
+        // Same reasoning as trackAdRevenue: a NaN reaching JSONSerialization is a crash, not an error.
+        let value = (value?.isFinite ?? false) ? value : nil
         Task { await api.recordCustomEvent(installId: installId, name: name, value: value) }
     }
 

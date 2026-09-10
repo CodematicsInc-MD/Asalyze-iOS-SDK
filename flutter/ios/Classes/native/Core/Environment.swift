@@ -74,11 +74,33 @@ struct AppContext {
     let region: String?
     // Base64 PKCS#7, only when installedAt is nil (pre-iOS 16). The backend extracts the date.
     let legacyReceipt: String?
+    // Hardware identifier, e.g. "iPhone11,2". Reported RAW — turning it into "iPhone XS" would bake a
+    // lookup table into the SDK that goes stale with every Apple release and could only be corrected by
+    // shipping a new SDK. The server can name it, and be corrected, at any time.
+    let deviceModel: String?
     // AppTransaction's signed JWS (iOS 16+). Carries more than the date — see appContext().
     let appTransactionJws: String?
 }
 
 extension SDKEnvironment {
+    /// The hardware identifier — "iPhone11,2", "iPad13,1", "arm64" on the simulator.
+    ///
+    /// `uname` rather than UIDevice: `UIDevice.model` says only "iPhone", and `utsname.machine` is the
+    /// specific model. No permission, no required-reason API, nothing user-identifying — the same string
+    /// is reported by millions of identical devices.
+    ///
+    /// Worth having because os_version alone could not answer which hardware a crash or a purchase came
+    /// from: a launch crash on 2026-09-10 was device-specific and the model had to be read out of Apple's
+    /// crash report, because Asalyze did not hold it.
+    static func deviceModel() -> String? {
+        var info = utsname()
+        uname(&info)
+        let machine = withUnsafePointer(to: &info.machine) {
+            $0.withMemoryRebound(to: CChar.self, capacity: MemoryLayout.size(ofValue: $0.pointee)) { String(cString: $0) }
+        }
+        return machine.isEmpty ? nil : machine
+    }
+
     /// The device's own region. Read fresh each time rather than captured once at install, because ad
     /// impressions need where the user IS, not where they signed up.
     ///
@@ -140,6 +162,6 @@ extension SDKEnvironment {
         let os = "\(v.majorVersion).\(v.minorVersion).\(v.patchVersion)"
         return AppContext(environment: await resolve(), version: version, build: build, installedAt: installedAt,
                           osVersion: os, region: region, legacyReceipt: legacyReceipt,
-                          appTransactionJws: appTransactionJws)
+                          deviceModel: deviceModel(), appTransactionJws: appTransactionJws)
     }
 }
