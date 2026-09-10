@@ -1,6 +1,6 @@
 Pod::Spec.new do |s|
   s.name             = 'Asalyze'
-  s.version          = '3.1.4'
+  s.version          = '3.1.5'
   s.summary          = 'Apple Search Ads ROAS tracking for iOS — attribution + revenue.'
   s.description      = <<-DESC
     First-party Apple Search Ads attribution for ROAS.

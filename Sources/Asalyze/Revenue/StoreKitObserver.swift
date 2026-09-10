@@ -93,21 +93,48 @@ final class StoreKitObserver {
         #endif
     }
 
+    /// The right to run a sweep, or a note that one is already running and another is now owed.
+    private enum SweepClaim {
+        case owned(lastEndedAt: Date?)
+        case alreadyRunning
+    }
+
+    /// Take the sweep, or record that one more is owed. Synchronous ON PURPOSE — see `sweepAll`.
+    private func claimSweep() -> SweepClaim {
+        lock.lock(); defer { lock.unlock() }
+        if sweeping { pendingSweep = true; return .alreadyRunning }
+        sweeping = true
+        return .owned(lastEndedAt: lastSweepEndedAt)
+    }
+
+    /// End one pass. True when a sweep was requested while this one ran, and should run now.
+    private func finishSweepPass() -> Bool {
+        lock.lock(); defer { lock.unlock() }
+        lastSweepEndedAt = Date()
+        let again = pendingSweep
+        pendingSweep = false
+        if !again { sweeping = false }
+        return again
+    }
+
     #if canImport(StoreKit)
     /// One pass over `Transaction.all`, serialized against every other pass. Returns immediately if a
     /// sweep is already running, having marked that one more is owed.
+    ///
+    /// The locking lives in `claimSweep`/`finishSweepPass` rather than inline here because `NSLock.lock()`
+    /// is unavailable from an async context — a warning today and an error in the Swift 6 language mode.
+    /// The compiler's objection is to holding a lock ACROSS a suspension point, which would block a
+    /// cooperative thread and can deadlock the pool; confining each critical section to a synchronous
+    /// function makes it structurally impossible rather than merely true today. Note the `await` below
+    /// sits between the two calls, never inside either.
     @available(iOS 15.0, macOS 12.0, *)
     private func sweepAll(rateLimited: Bool = false) async {
-        lock.lock()
-        if sweeping { pendingSweep = true; lock.unlock(); return }
-        sweeping = true
-        let last = lastSweepEndedAt
-        lock.unlock()
+        guard case .owned(let lastEndedAt) = claimSweep() else { return }
 
-        // Waiting INSIDE the sweep, holding `sweeping`, is deliberate: foregrounds arriving during the
-        // wait collapse into the one pass that is already owed rather than queueing up behind it.
-        if rateLimited, let last {
-            let remaining = Self.minSweepInterval - Date().timeIntervalSince(last)
+        // Waiting while HOLDING the claim is deliberate: foregrounds arriving during the wait collapse
+        // into the one pass already owed rather than queueing up behind it.
+        if rateLimited, let lastEndedAt {
+            let remaining = Self.minSweepInterval - Date().timeIntervalSince(lastEndedAt)
             if remaining > 0 { try? await Task.sleep(nanoseconds: UInt64(remaining * 1_000_000_000)) }
         }
 
@@ -116,14 +143,7 @@ final class StoreKitObserver {
                 guard case .verified(let tx) = result else { continue }
                 emitIfNew(tx)
             }
-            lock.lock()
-            lastSweepEndedAt = Date()
-            let again = pendingSweep
-            pendingSweep = false
-            if !again { sweeping = false }
-            lock.unlock()
-            if !again { return }
-        } while true
+        } while finishSweepPass()
     }
     #endif
 
