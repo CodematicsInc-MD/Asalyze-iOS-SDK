@@ -1,6 +1,6 @@
 Pod::Spec.new do |s|
   s.name             = 'asalyze'
-  s.version          = '3.1.5'
+  s.version          = '3.1.6'
   s.summary          = 'Apple Search Ads ROAS tracking for iOS Flutter apps.'
   s.description      = 'Self-contained Flutter plugin: AdServices attribution + StoreKit 2 revenue + ad revenue. The native Asalyze SDK sources are vendored under Classes/native and compiled into this pod — no external dependency.'
   s.homepage         = 'https://asalyze.com'

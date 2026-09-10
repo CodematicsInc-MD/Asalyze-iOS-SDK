@@ -210,6 +210,23 @@ final class StoreKitObserver {
         if #available(iOS 16.0, macOS 13.0, tvOS 16.0, watchOS 9.0, *) {
             txEnv = tx.environment == .production ? "production" : "sandbox"
         }
+        // NEVER `tx.currencyCode` above iOS 15 — it faults.
+        //
+        // Below iOS 17.2 neither property is stored: both parse the raw JWS by keypath, and the two
+        // transforms differ. `currency` maps through an Optional (`String($0).map { Locale.Currency($0) }`)
+        // and yields nil for a field it cannot read; `currencyCode` passes `String.init` directly, and on
+        // a real sandbox transaction on iOS 16.3 that path dereferences null — EXC_BAD_ACCESS at 0x0,
+        // annotated by the debugger on this exact line, inside Apple's getter rather than our code.
+        //
+        // From iOS 17.2 both are just a stored property, so this costs nothing there. `currency` is
+        // iOS 16+ and back-deployed, so iOS 15 keeps the old call — the only OS with no alternative, and
+        // one that reaches a different accessor entirely.
+        let currency: String?
+        if #available(iOS 16.0, macOS 13.0, tvOS 16.0, watchOS 9.0, *) {
+            currency = tx.currency?.identifier
+        } else {
+            currency = tx.currencyCode
+        }
         // NB: do NOT mark sent here — the Runtime marks it only after the POST succeeds, so a failed
         // report is replayed from `Transaction.all` on the next launch instead of being lost.
         emit(ObservedTransaction(
@@ -218,7 +235,7 @@ final class StoreKitObserver {
             productId: tx.productID,
             type: type,
             priceUsd: (tx.price as NSDecimalNumber?)?.doubleValue,
-            currency: tx.currencyCode,
+            currency: currency,
             occurredAt: tx.revocationDate ?? tx.purchaseDate,
             environment: txEnv,
             purchaseType: purchaseType

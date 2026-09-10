@@ -1,6 +1,6 @@
 {
   "name": "com.asalyze.sdk",
-  "version": "3.1.5",
+  "version": "3.1.6",
   "displayName": "Asalyze",
   "description": "Apple Search Ads ROAS attribution + StoreKit 2 subscription and ad-revenue tracking for Unity iOS. Configure once \u2014 AdServices attribution and purchases are observed automatically. iOS only (Apple Search Ads is iOS-only).",
   "license": "MIT",
