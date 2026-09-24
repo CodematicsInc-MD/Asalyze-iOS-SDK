@@ -3,8 +3,8 @@ import Foundation
 import StoreKit
 #endif
 
-/// Which data plane an install belongs to. Reports show `.production`; `.sandbox` (TestFlight, Xcode,
-/// debug, ad-hoc/enterprise, simulator) is quarantined to the Test Devices tab on the backend.
+/// Which data plane an install belongs to. Production reporting shows `.production`; `.sandbox`
+/// (TestFlight, Xcode, debug, ad-hoc/enterprise, simulator) is kept out of it.
 enum SDKEnvironment: String {
     case production
     case sandbox
@@ -89,9 +89,7 @@ extension SDKEnvironment {
     /// specific model. No permission, no required-reason API, nothing user-identifying — the same string
     /// is reported by millions of identical devices.
     ///
-    /// Worth having because os_version alone could not answer which hardware a crash or a purchase came
-    /// from: a launch crash on 2026-09-10 was device-specific and the model had to be read out of Apple's
-    /// crash report, because Asalyze did not hold it.
+    /// Worth having because OS version alone cannot say which hardware an install or a purchase came from.
     static func deviceModel() -> String? {
         var info = utsname()
         uname(&info)

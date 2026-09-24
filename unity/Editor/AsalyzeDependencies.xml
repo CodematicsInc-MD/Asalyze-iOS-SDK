@@ -7,17 +7,14 @@
 <!--
   KEEP THIS PIN IN STEP WITH package.json. Unity does NOT vendor the Swift the way the Flutter plugin
   does — it pulls the CocoaPod — so this line, not the .unitypackage, decides which SDK a Unity app
-  actually ships. It has drifted twice: once sitting at `~> 1.3` while the package said 2.0.0, and again
-  at `~> 2.2` while the package said 3.1.6, which would have installed a version with the iOS 16.0-17.1
-  launch crash in it.
+  actually ships.
 
-  Pinned to `~> 3.1.6` rather than `~> 3.1` deliberately: the looser form still admits 3.1.0-3.1.5, and
-  every one of those reads Transaction.currencyCode and faults. This floors it at the fix while still
-  taking future 3.1.x patches.
+  Pin the full version (`~> 3.1.7`) rather than `~> 3.1`: the looser form also admits earlier 3.1.x
+  releases. This floors it at the current one while still taking future 3.1.x patches.
 -->
 <dependencies>
   <iosPods>
-    <iosPod name="Asalyze" version="~> 3.1.6" minTargetSdk="15.0" addToAllTargets="false">
+    <iosPod name="Asalyze" version="~> 3.1.7" minTargetSdk="15.0" addToAllTargets="false">
       <sources>
         <source>https://github.com/CocoaPods/Specs</source>
       </sources>

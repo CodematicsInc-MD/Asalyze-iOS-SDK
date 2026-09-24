@@ -20,9 +20,7 @@ final class StoreKitObserver {
     /// A `String` is not a word: reading one loads a buffer pointer AND retains that buffer, writing one
     /// stores a pointer AND releases the old buffer. With two sweeps reading (see `rescan`) and the
     /// Runtime writing, the same buffer can be released by parties that no longer agree on who owns it —
-    /// an over-release, which frees memory that is still referenced. What crashes afterwards is whatever
-    /// the allocator hands that memory to next, which is why the failure surfaced as a Swift Task
-    /// resuming into a null function pointer rather than as anything to do with an environment string.
+    /// an over-release, which frees memory that is still referenced. Hence the lock.
     ///
     /// Never call out (to `onTransaction`) while holding this: NSLock is not recursive.
     private let lock = NSLock()
@@ -213,10 +211,9 @@ final class StoreKitObserver {
         // NEVER `tx.currencyCode` above iOS 15 — it faults.
         //
         // Below iOS 17.2 neither property is stored: both parse the raw JWS by keypath, and the two
-        // transforms differ. `currency` maps through an Optional (`String($0).map { Locale.Currency($0) }`)
-        // and yields nil for a field it cannot read; `currencyCode` passes `String.init` directly, and on
-        // a real sandbox transaction on iOS 16.3 that path dereferences null — EXC_BAD_ACCESS at 0x0,
-        // annotated by the debugger on this exact line, inside Apple's getter rather than our code.
+        // transforms differ. `currency` maps through an Optional and yields nil for a field it cannot
+        // read; `currencyCode` passes `String.init` directly, which can dereference null on those OS
+        // versions.
         //
         // From iOS 17.2 both are just a stored property, so this costs nothing there. `currency` is
         // iOS 16+ and back-deployed, so iOS 15 keeps the old call — the only OS with no alternative, and

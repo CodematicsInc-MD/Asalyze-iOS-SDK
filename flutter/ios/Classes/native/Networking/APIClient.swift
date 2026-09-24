@@ -13,12 +13,9 @@ actor APIClient {
 
     /// Ingest event variants → POST /v1/event.
     ///
-    /// Ad revenue only. There was an `iap` case here that nothing could reach — no public method, no
-    /// ObjC bridge entry, no Unity or Flutter call — because StoreKit purchases are observed
-    /// automatically and manual purchase reporting is deliberately not offered. It carried its own
-    /// purchase-type argument and a comment explaining what "the caller" should pass, describing a
-    /// caller that has never existed. The REST endpoint still accepts type 'iap' for server-to-server
-    /// integrations; that is a backend contract, not an SDK one.
+    /// Ad revenue only: StoreKit purchases are observed automatically, so the SDK offers no manual
+    /// purchase call. The REST endpoint accepts type 'iap' for server-to-server integrations, which is
+    /// an API contract rather than an SDK one.
     enum Event {
         // region travels WITH the impression, not with the install: eCPM is set by where the ad was
         // actually served, and a user who installed in one country and is now in another would otherwise

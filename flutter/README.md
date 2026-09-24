@@ -7,26 +7,17 @@ pod and compiled in — **no external pods, no CocoaPods trunk dependency**. Dar
 > iOS only. Apple Search Ads attribution is an iOS capability, so there is **no Android implementation**
 > (every call is a no-op off iOS). Requires **iOS 15+**.
 
-## Install (embed in another Flutter project)
+## Install
 
-Point your app's `pubspec.yaml` at this plugin. Local path (same machine) is easiest for now:
-
-```yaml
-dependencies:
-  asalyze:
-    path: /Volumes/Office/Development/MMP/sdk/flutter
-```
-
-…or via git once pushed:
+From [pub.dev](https://pub.dev/packages/asalyze):
 
 ```yaml
 dependencies:
-  asalyze:
-    git:
-      url: https://github.com/<you>/asalyze-flutter.git
+  asalyze: ^3.1.7
 ```
 
-Then `flutter pub get` and (from `ios/`) `pod install`. Ensure the app's iOS deployment target is **15.0+**.
+Or `flutter pub add asalyze`. Then `flutter pub get` and, from `ios/`, `pod install`. Ensure the app's iOS
+deployment target is **15.0+**.
 
 ## Use
 

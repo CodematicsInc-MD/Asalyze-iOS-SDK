@@ -1,6 +1,6 @@
 Pod::Spec.new do |s|
   s.name             = 'Asalyze'
-  s.version          = '3.1.6'
+  s.version          = '3.1.7'
   s.summary          = 'Apple Search Ads ROAS tracking for iOS — attribution + revenue.'
   s.description      = <<-DESC
     First-party Apple Search Ads attribution for ROAS.
@@ -8,7 +8,7 @@ Pod::Spec.new do |s|
   s.homepage         = 'https://asalyze.com'
   s.license          = { :type => 'MIT', :file => 'LICENSE' }
   s.author           = { 'Malik Ahsan Ali' => 'malikahsan@codematics.co' }
-  s.source           = { :git => 'https://github.com/CodematicsInc-MD/asalyze-sdk-Swift-Flutter-.git', :tag => "v#{s.version}" }
+  s.source           = { :git => 'https://github.com/CodematicsInc-MD/Asalyze-iOS-SDK.git', :tag => "v#{s.version}" }
   s.source_files     = 'Sources/Asalyze/**/*.swift'
   s.resource_bundles = { 'Asalyze' => ['Sources/Asalyze/PrivacyInfo.xcprivacy'] }
   s.platform         = :ios, '15.0'
