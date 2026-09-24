@@ -13,7 +13,7 @@ From [pub.dev](https://pub.dev/packages/asalyze):
 
 ```yaml
 dependencies:
-  asalyze: ^3.1.7
+  asalyze: ^3.1.8
 ```
 
 Or `flutter pub add asalyze`. Then `flutter pub get` and, from `ios/`, `pod install`. Ensure the app's iOS

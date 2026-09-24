@@ -9,27 +9,27 @@ as **system frameworks** (not bundled); AdMob is hooked, not bundled.
 
 **Swift Package Manager**
 ```swift
-.package(url: "https://github.com/CodematicsInc-MD/Asalyze-iOS-SDK", from: "3.1.7")
+.package(url: "https://github.com/CodematicsInc-MD/Asalyze-iOS-SDK", from: "3.1.8")
 ```
 
 **CocoaPods**
 ```ruby
-pod 'Asalyze', '~> 3.1.7'
+pod 'Asalyze', '~> 3.1.8'
 ```
 
 **Flutter** — [pub.dev/packages/asalyze](https://pub.dev/packages/asalyze)
 ```yaml
 dependencies:
-  asalyze: ^3.1.7
+  asalyze: ^3.1.8
 ```
 
 **Unity** — Package Manager ▸ Add package from git URL
 ```
-https://github.com/CodematicsInc-MD/Asalyze-iOS-SDK.git?path=/unity#v3.1.7
+https://github.com/CodematicsInc-MD/Asalyze-iOS-SDK.git?path=/unity#v3.1.8
 ```
-EDM4U then pulls `pod 'Asalyze', '~> 3.1.7'` on the next iOS build. See [`unity/`](unity/).
+EDM4U then pulls `pod 'Asalyze', '~> 3.1.8'` on the next iOS build. See [`unity/`](unity/).
 
-> Pin the **full version** (`3.1.7`) rather than `~> 3.1`, which also resolves to earlier 3.1.x releases.
+> Pin the **full version** (`3.1.8`) rather than `~> 3.1`, which also resolves to earlier 3.1.x releases.
 
 ## Public surface
 ```swift

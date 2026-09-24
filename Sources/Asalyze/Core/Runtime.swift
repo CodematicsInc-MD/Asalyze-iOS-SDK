@@ -10,7 +10,7 @@ import UIKit
 /// The SDK's own version, sent with every install. Reading it directly beats inferring it from which
 /// fields a payload happens to carry: that only works while every release adds one, and cannot tell
 /// two releases apart once both send the same set.
-let asalyzeSDKVersion = "3.1.7"
+let asalyzeSDKVersion = "3.1.8"
 
 final class Runtime {
     let config: Config

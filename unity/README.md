@@ -15,10 +15,10 @@ Configure once; AdServices attribution and purchases (including Unity IAP) are o
 Unity ▸ Window ▸ Package Manager ▸ **+ ▸ Add package from git URL…**
 
 ```
-https://github.com/CodematicsInc-MD/Asalyze-iOS-SDK.git?path=/unity#v3.1.7
+https://github.com/CodematicsInc-MD/Asalyze-iOS-SDK.git?path=/unity#v3.1.8
 ```
 
-On your next iOS build, EDM4U adds `pod 'Asalyze', '~> 3.1.7'` and runs `pod install` automatically.
+On your next iOS build, EDM4U adds `pod 'Asalyze', '~> 3.1.8'` and runs `pod install` automatically.
 
 ### Framework linkage (important)
 The native bridge imports `<Asalyze/Asalyze-Swift.h>`, so the Asalyze pod must be integrated **as a

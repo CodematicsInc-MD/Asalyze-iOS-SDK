@@ -165,10 +165,16 @@ final class StoreKitObserver {
                 // 1. Backfill: every transaction the device knows about, with its real dates.
                 await self?.sweepAll()
                 // 2. Live: new transactions (renewals/refunds) for the app's lifetime.
+                //
+                // NEVER call `tx.finish()` here. Finishing is the APP's statement that it has delivered
+                // what the customer paid for, and it is what stops StoreKit re-delivering the transaction
+                // on the next launch. An analytics SDK cannot know whether the app has granted anything,
+                // so finishing on its behalf removes the host app's safety net — a consumable that the app
+                // would have credited from `Transaction.unfinished` after a crash or a kill is simply gone,
+                // and the customer has paid for nothing. Observing is all this loop may do.
                 for await update in Transaction.updates {
                     guard case .verified(let tx) = update else { continue }
                     self?.emitIfNew(tx)
-                    await tx.finish()
                 }
             }
         }
