@@ -8,9 +8,6 @@
   KEEP THIS PIN IN STEP WITH package.json. Unity does NOT vendor the Swift the way the Flutter plugin
   does — it pulls the CocoaPod — so this line, not the .unitypackage, decides which SDK a Unity app
   actually ships.
-
-  Pin the full version (`~> 3.1.9`) rather than `~> 3.1`: the looser form also admits earlier 3.1.x
-  releases. This floors it at the current one while still taking future 3.1.x patches.
 -->
 <dependencies>
   <iosPods>

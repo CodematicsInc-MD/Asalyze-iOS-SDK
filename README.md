@@ -27,8 +27,6 @@ dependencies:
 https://github.com/CodematicsInc-MD/Asalyze-iOS-SDK.git?path=/unity#v3.1.9
 ```
 
-> Pin the **full version** (`3.1.9`) rather than `~> 3.1`, which also resolves to earlier 3.1.x releases.
-
 ## Use
 
 ```swift
