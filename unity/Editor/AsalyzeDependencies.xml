@@ -9,12 +9,12 @@
   does — it pulls the CocoaPod — so this line, not the .unitypackage, decides which SDK a Unity app
   actually ships.
 
-  Pin the full version (`~> 3.1.8`) rather than `~> 3.1`: the looser form also admits earlier 3.1.x
+  Pin the full version (`~> 3.1.9`) rather than `~> 3.1`: the looser form also admits earlier 3.1.x
   releases. This floors it at the current one while still taking future 3.1.x patches.
 -->
 <dependencies>
   <iosPods>
-    <iosPod name="Asalyze" version="~> 3.1.8" minTargetSdk="15.0" addToAllTargets="false">
+    <iosPod name="Asalyze" version="~> 3.1.9" minTargetSdk="15.0" addToAllTargets="false">
       <sources>
         <source>https://github.com/CocoaPods/Specs</source>
       </sources>

@@ -1,6 +1,6 @@
 name: asalyze
 description: Apple Search Ads ROAS tracking for iOS Flutter apps — first-party AdServices attribution + StoreKit 2 revenue. No IDFA.
-version: 3.1.8
+version: 3.1.9
 homepage: https://asalyze.com
 repository: https://github.com/CodematicsInc-MD/Asalyze-iOS-SDK
 issue_tracker: https://github.com/CodematicsInc-MD/Asalyze-iOS-SDK/issues
