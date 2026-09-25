@@ -9,8 +9,7 @@ import AdServices
 /// Apple when a genuinely different one arrives. The token is opaque; our backend exchanges it with
 /// Apple to resolve the deterministic campaign → ad group → keyword. No IDFA, no ATT prompt.
 ///
-/// This lives behind its own type so a future SKAdNetwork / AdAttributionKit conversion-value manager
-/// can be added alongside it, never entangled with IAP/ad tracking (see R6 in the architecture docs).
+/// It lives behind its own type, so attribution capture stays separate from IAP and ad tracking.
 enum AttributionManager {
     /// The AdServices token, plus WHY there isn't one when there isn't.
     ///
