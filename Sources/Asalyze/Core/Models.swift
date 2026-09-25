@@ -16,11 +16,8 @@ public struct Config {
     }
 }
 
-/// What kind of in-app purchase this is, read from StoreKit's `productType` per transaction.
-///
-/// It decides how the purchase is counted: a consumable bought ten times is ten sales and no
-/// subscriber, while a non-consumable is one permanent unlock that belongs in neither churn nor
-/// renewal. A non-renewing subscription counts as a subscription — it is one, just fixed-term.
+/// What kind of in-app purchase this is, from StoreKit's `productType`. A non-renewing subscription
+/// counts as a subscription: it is one, just fixed-term.
 public enum PurchaseType: String, Codable {
     case subscription
     case consumable

@@ -118,8 +118,7 @@ final class StoreKitObserver {
             task = Task.detached { [weak self] in
                 // Backfill first, then live transactions for the app's lifetime.
                 await self?.sweepAll()
-                // NEVER call `tx.finish()` here: finishing is the host app's statement that it delivered
-                // the purchase, and it stops StoreKit re-delivering the transaction on the next launch.
+                // Do not call `tx.finish()` here — finishing is the host app's call.
                 for await update in Transaction.updates {
                     guard case .verified(let tx) = update else { continue }
                     self?.emitIfNew(tx)

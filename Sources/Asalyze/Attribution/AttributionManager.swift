@@ -3,11 +3,8 @@ import Foundation
 import AdServices
 #endif
 
-/// Captures Apple's AdServices attribution token on every launch — Apple often has nothing to give in
-/// the seconds after an install, so a later call succeeds where the first returned nothing. The token is
-/// opaque and is exchanged server-side for the campaign, ad group and keyword. No IDFA, no ATT prompt.
-///
-/// It lives behind its own type, so attribution capture stays separate from IAP and ad tracking.
+/// Captures Apple's AdServices attribution token, exchanged server-side for the campaign, ad group and
+/// keyword. No IDFA, no ATT prompt.
 enum AttributionManager {
     /// The AdServices token, plus WHY there isn't one when there isn't.
     ///

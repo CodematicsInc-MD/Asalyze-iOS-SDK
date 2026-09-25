@@ -5,12 +5,9 @@ using System.Text;
 public enum AsalyzeAdFormat { Banner, Interstitial, Rewarded, RewardedInterstitial, Native, AppOpen }
 
 /// <summary>
-/// Unity entry point for Asalyze (Apple Search Ads ROAS tracking). Delegates to the native iOS SDK.
-///
-/// iOS only — every call is a safe no-op in the Editor and on non-iOS platforms (Apple Search Ads is
-/// iOS-only). Call <see cref="Configure"/> once at startup; after that AdServices attribution and
-/// StoreKit 2 purchases (including Unity IAP) are observed automatically — no per-purchase calls needed.
-/// Use <see cref="TrackAdRevenue"/> from your mediation paid-event callback to route ad revenue into ROAS.
+/// Unity entry point for Asalyze. Call <see cref="Configure"/> once at startup; attribution and
+/// purchases (including Unity IAP) are tracked from then on. iOS only — every call is a no-op
+/// elsewhere. Report ad revenue with <see cref="TrackAdRevenue"/> from your mediation callback.
 /// </summary>
 public static class Asalyze
 {

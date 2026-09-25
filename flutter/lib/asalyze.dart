@@ -40,11 +40,8 @@ class Asalyze {
     });
   }
 
-  /// The stable first-party install id (no IDFA), or null before configure / on non-iOS.
-  ///
-  /// Useful for reconciling Asalyze against your own analytics — store it alongside your events and
-  /// the two can be joined later. Nothing needs to be done with it for attribution: purchases and
-  /// renewals are linked automatically.
+  /// The stable first-party install id (no IDFA), or null before configure and off iOS. Optional —
+  /// useful for reconciling against your own analytics.
   static Future<String?> installId() async {
     if (!_supported) return null;
     return _channel.invokeMethod<String>('installId');

@@ -1,8 +1,5 @@
-// AsalyzeUnity.mm — C bridge from Unity (C#) to the Asalyze iOS SDK's Objective-C surface.
-//
-// The Asalyze pod exposes `AsalyzeBridge` (an @objc class); Unity calls the plain-C functions below via
-// [DllImport("__Internal")]. Requires the Asalyze pod to be integrated as a framework (use_frameworks!)
-// so the generated `<Asalyze/Asalyze-Swift.h>` interface is importable — see the package README.
+// C bridge from Unity (C#) to the SDK's Objective-C surface, called via [DllImport("__Internal")].
+// Requires the pod integrated as a framework — see the package README.
 
 #import <Foundation/Foundation.h>
 #import <Asalyze/Asalyze-Swift.h>

@@ -4,13 +4,8 @@ using UnityEditor.Callbacks;
 using UnityEditor.iOS.Xcode;
 
 /// <summary>
-/// Post-build tweaks so the Swift Asalyze pod links cleanly into the Unity-generated Xcode project:
-/// enables Swift on the targets (so the Swift runtime is linked + embedded) and turns off bitcode.
-/// EDM4U handles the `pod install` itself; this only sets the build settings CocoaPods can't.
-///
-/// NOTE: the `.mm` shim imports &lt;Asalyze/Asalyze-Swift.h&gt;, which needs the pod integrated as a
-/// framework. If your project links pods statically, enable "Add use_frameworks" in EDM4U's iOS
-/// Resolver settings (or add `use_frameworks!` to the Podfile). See the package README.
+/// Post-build settings the Unity-generated Xcode project needs for the Swift pod: Swift enabled on the
+/// targets, bitcode off. The pod must be integrated as a framework — see the package README.
 /// </summary>
 public static class AsalyzeBuildPostProcessor
 {
