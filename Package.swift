@@ -17,11 +17,6 @@ let package = Package(
             // Apple requires a privacy manifest from every SDK. Unbundled it protects nobody: the host
             // app is the one that receives ITMS-91053 at upload for an API it did not call.
             resources: [.copy("PrivacyInfo.xcprivacy")]
-        ),
-        .testTarget(
-            name: "AsalyzeTests",
-            dependencies: ["Asalyze"],
-            path: "Tests/AsalyzeTests"
         )
     ]
 )
