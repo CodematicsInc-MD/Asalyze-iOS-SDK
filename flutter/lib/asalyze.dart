@@ -26,8 +26,7 @@ class Asalyze {
   ///
   /// [apiKey] — the per-app key from the Asalyze dashboard (My Apps → app → SDK API key).
   /// [appId]  — your bundle identifier.
-  /// [endpoint] — backend base URL. Omit for production; pass e.g. `http://your-mac.local:3100`
-  ///              (or a staging URL) to point at a non-production backend.
+  /// [endpoint] — base URL. Omit for production; pass one only for local or staging testing.
   static Future<void> configure({
     required String apiKey,
     required String appId,

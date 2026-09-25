@@ -59,19 +59,11 @@ To point at a backend running on your Mac instead of production:
 3. Phone and Mac on the **same Wi-Fi**. A dev build reports as `sandbox` → data lands in the dashboard's
    **Test Devices → Live sandbox feed**, not production Reports.
 
-## Known limitations
+## Notes
 
-- **No offline queue / retry** yet — ingest is fire-and-forget (events lost on a network failure).
-- Default endpoint is `https://asalyze.com` (live) — pass `endpoint:` only for local/staging testing.
-
-### Subscription transitions
-
-**Cancelled, expired, resubscribed and offer-redeemed** reach Asalyze through **App Store Server
-Notifications** and the App Store Server API. Renewal *status* is not a StoreKit transaction, so these
-never appear in the transaction stream and there is nothing to report from the app.
-
-Connect App Store Server Notifications and this is handled — including for users who never reopen the
-app, which no on-device code can cover.
+- The default endpoint is production; pass `endpoint:` only when pointing at a local or staging server.
+- Subscription lifecycle — renewals, cancellations, expiries and refunds — needs App Store Server
+  Notifications connected in the dashboard.
 
 ---
 

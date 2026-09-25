@@ -3,21 +3,18 @@ import Foundation
 import StoreKit
 #endif
 
-/// Public facade for the ASA ROAS Tracker SDK.
+/// Public facade for the Asalyze SDK.
 ///
-/// One call — `configure` — wires up first-party AdServices attribution and StoreKit 2 purchase
-/// observation. Purchases, renewals and refunds need no code: StoreKit is the source of the price,
-/// currency, offer type and transaction id. Ad revenue is the one thing Apple cannot see, so
-/// `trackAdRevenue` reports it.
+/// One call — `configure` — sets up Apple Search Ads attribution and purchase tracking. Purchases,
+/// renewals and refunds need no code of your own. Ad revenue is the one thing Apple cannot see, so
+/// report it with `trackAdRevenue`.
 ///
 /// ```swift
 /// Asalyze.configure(apiKey: "sk_…", appId: "com.your.app")
 /// ```
 public enum Asalyze {
-    /// The runtime is read from whatever thread the host happens to call us on — AdMob's
-    /// `paidEventHandler` fires on its own — while `configure` writes it from another. An unsynchronized
-    /// class reference read against a concurrent write is the same defect that took the StoreKit observer
-    /// down (see StoreKitObserver's `lock`), so the one mutable field in the public surface is guarded.
+    /// Guarded: the host can call in from any thread (AdMob's `paidEventHandler` has its own) while
+    /// `configure` writes this from another.
     private static let runtimeLock = NSLock()
     private static var _runtime: Runtime?
     private static var runtime: Runtime? {
@@ -27,9 +24,9 @@ public enum Asalyze {
 
     /// Configure the SDK. Call once, as early as possible (App init / didFinishLaunching).
     /// - Parameters:
-    ///   - apiKey: the per-app key from the dashboard (Test Devices / My Apps).
+    ///   - apiKey: the per-app key from the dashboard (My Apps → your app → SDK API key).
     ///   - appId: your bundle identifier.
-    ///   - endpoint: backend base URL. Defaults to production.
+    ///   - endpoint: base URL. Defaults to production; pass one only for local or staging testing.
     public static func configure(apiKey: String, appId: String, endpoint: URL = Config.defaultEndpoint) {
         let config = Config(apiKey: apiKey, appId: appId, endpoint: endpoint)
         let runtime = Runtime(config: config)
@@ -42,15 +39,9 @@ public enum Asalyze {
 
 
 
-    /// Tag this device with YOUR OWN id for the signed-in user — whatever your app already calls them
-    /// (your backend's user id, a Firebase uid, an account number). Asalyze never generates or discovers
-    /// it; you pass it, typically right after your sign-in completes.
-    ///
-    /// It is opaque to us and is used for exactly one thing: finding this install in User Journey by
-    /// searching for your id, so our numbers can be reconciled against your own system. It never
-    /// attributes, joins revenue or dedupes, and two devices sharing one account is expected.
-    ///
-    /// Reported immediately, not on the next heartbeat. Pass `nil` on sign-out to clear it.
+    /// Tag this device with your own id for the signed-in user, so you can find the install in User
+    /// Journey by searching for it. Optional: nothing in attribution or revenue uses it. Reported
+    /// immediately; pass `nil` on sign-out.
     ///
     /// ```swift
     /// Asalyze.setUserId(session.user.id)   // after sign-in

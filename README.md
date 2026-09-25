@@ -35,15 +35,29 @@ import Asalyze
 Asalyze.configure(apiKey: "sk_…", appId: "com.your.app")   // once, at startup
 ```
 
-That is the whole setup. Attribution and purchases are tracked from then on, with nothing to call per
-purchase — prices, currencies, offer types and transaction ids come from Apple rather than from your code.
+That is the whole setup. Attribution, purchases and subscriptions are tracked from then on — nothing to
+call per purchase.
+
+**If your app shows ads**, report each impression's revenue from AdMob's paid-event callback — once per
+ad object, for every format you show:
+
+```swift
+interstitialAd.paidEventHandler = { adValue in
+  Asalyze.trackAdRevenue(
+    valueUsd: adValue.value.doubleValue / 1_000_000,  // AdMob reports micros
+    format:   .interstitial,
+    currency: adValue.currencyCode                    // never assume USD
+  )
+}
+```
+
+Snippets for every format, and for Flutter and Unity, are in the dashboard under Developer Docs.
 
 Optional:
 
 ```swift
-Asalyze.trackAdRevenue(valueUsd:format:currency:)   // from AdMob's paid event
-Asalyze.trackEvent("completed_onboarding")          // your own events → Goals
-Asalyze.setUserId("user_123")                       // your id for the signed-in user
+Asalyze.trackEvent("completed_onboarding")   // your own events → Goals
+Asalyze.setUserId("user_123")                // your id for a signed-in user, to find them in User Journey
 ```
 
 ## What it tracks
@@ -52,7 +66,7 @@ Asalyze.setUserId("user_123")                       // your id for the signed-in
 |---|---|
 | **Attribution** | Apple Search Ads campaign, ad group and keyword per install; organic installs recorded too |
 | **Purchases** | One-off purchases and subscriptions, with Apple's own price, currency and offer type |
-| **Subscription lifecycle** | Renewals, cancellations, expiries and refunds — including for people who never reopen the app, once App Store Server Notifications are connected |
+| **Subscription lifecycle** | Renewals, cancellations, expiries and refunds (connect App Store Server Notifications in the dashboard) |
 | **Ad revenue** | Per impression, via the AdMob helper |
 | **Custom events** | Any event you send, for funnels and goals |
 

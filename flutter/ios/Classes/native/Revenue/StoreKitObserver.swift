@@ -3,26 +3,12 @@ import Foundation
 import StoreKit
 #endif
 
-/// Observes StoreKit 2 transactions. On launch it first sweeps `Transaction.all` to BACKFILL the
-/// user's past purchases (each stamped with its real Apple dates) — so a user who subscribed before
-/// the SDK shipped still shows a complete timeline, exactly like RevenueCat/Adapty. It then watches
-/// `Transaction.updates` for the app's lifetime. Every transaction carries Apple's `transactionId`, so
-/// the backend can dedupe it against the App Store Server API pull. Local dedup avoids re-sending
-/// history every launch.
+/// Observes StoreKit 2 transactions: on launch it backfills the device's past purchases from
+/// `Transaction.all`, then watches `Transaction.updates` for the app's lifetime. Every transaction
+/// carries Apple's own id, price, currency and product type.
 final class StoreKitObserver {
-    /// Guards every mutable field on this object.
-    ///
-    /// The sweeps below run on detached tasks while the Runtime is still WRITING to this object from
-    /// another thread, so none of these fields could be plain `var`s. `environment` is the one that bit:
-    /// Runtime sets it once `await AppTransaction.shared` returns — a storekitd round trip that can take
-    /// seconds on a cold launch — while a sweep is already reading it for every transaction it emits.
-    ///
-    /// A `String` is not a word: reading one loads a buffer pointer AND retains that buffer, writing one
-    /// stores a pointer AND releases the old buffer. With two sweeps reading (see `rescan`) and the
-    /// Runtime writing, the same buffer can be released by parties that no longer agree on who owns it —
-    /// an over-release, which frees memory that is still referenced. Hence the lock.
-    ///
-    /// Never call out (to `onTransaction`) while holding this: NSLock is not recursive.
+    /// Guards every mutable field. Sweeps run on detached tasks while the Runtime writes here.
+    /// Never call out (to `onTransaction`) while holding it: NSLock is not recursive.
     private let lock = NSLock()
 
     /// Called once per not-yet-sent verified transaction (past + live: initial buys, renewals, refunds).
@@ -32,57 +18,32 @@ final class StoreKitObserver {
     }
     private var _onTransaction: ((ObservedTransaction) -> Void)?
 
-    /// Resolved app environment (set by Runtime once AppTransaction resolves) — used for OS versions
-    /// where a transaction doesn't expose its own `.environment`.
+    /// Resolved app environment, used on OS versions where a transaction doesn't expose its own.
     var environment: String {
         get { lock.lock(); defer { lock.unlock() }; return _environment }
         set { lock.lock(); defer { lock.unlock() }; _environment = newValue }
     }
     private var _environment: String = SDKEnvironment.current.rawValue
 
-    /// Ids already handed to `onTransaction` during THIS launch.
-    ///
-    /// `Storage.hasSentTransaction` cannot do this job alone: it is written only after the POST lands, a
-    /// network round trip later, so two sweeps starting milliseconds apart both read "not sent" and both
-    /// report the same purchase. This claims the id the moment it is emitted, so a transaction is emitted
-    /// once no matter how many sweeps are walking `Transaction.all`.
-    ///
-    /// In memory, never persisted — a failed report must still replay from `Transaction.all` next launch.
+    /// Ids already emitted during THIS launch, so two overlapping sweeps can't report one purchase
+    /// twice. In memory only: a failed report must still replay from `Transaction.all` next launch.
     private var claimed: Set<String> = []
 
-    /// Sweeps never overlap. `Transaction.all` walks the device's whole purchase history, so running two
-    /// at once is the same work twice — and it was two concurrent readers that turned the unsynchronized
-    /// `environment` above into a crash. A rescan arriving while one is running sets `pendingSweep`
-    /// instead, and exactly one more runs when the current finishes, however many arrive meanwhile.
-    ///
-    /// Queued rather than dropped: a purchase completing mid-sweep may sit at a position the running
-    /// sweep has already passed, so skipping could lose the very sale `rescan` exists to catch.
+    /// Sweeps never overlap. One arriving while another runs is queued, not dropped — a purchase
+    /// completing mid-sweep may sit where the running pass has already been.
     private var sweeping = false
     private var pendingSweep = false
 
-    /// Floor between two sweeps triggered by a foreground.
-    ///
-    /// `didBecomeActive` is not a purchase signal — it fires on every return to the app: after a phone
-    /// call, the notification shade, Control Centre, an app switch. Walking the device's entire purchase
-    /// history each time is work nobody asked for, on someone else's battery.
-    ///
-    /// A request inside the window is DELAYED, never dropped: dropping it would lose the sale that
-    /// `rescan` exists to catch, since a purchase is exactly a foreground that follows a system sheet.
-    /// Worst case a purchase is reported a minute later than it could have been — and Apple's server
-    /// notification usually beats us to it anyway.
+    /// Floor between two foreground-triggered sweeps. A request inside the window is delayed, never
+    /// dropped.
     private static let minSweepInterval: TimeInterval = 60
     private var lastSweepEndedAt: Date?
 
     private var task: Task<Void, Never>?
 
 
-    /// Re-read every transaction the device knows about.
-    ///
-    /// `Transaction.updates` carries only what happens OUTSIDE a purchase() call — renewals, another
-    /// device, Ask to Buy. A purchase the app makes itself is returned in its PurchaseResult and never
-    /// appears in that stream, so the SDK cannot see it. Sweeping again catches it without the app
-    /// having to report anything: the StoreKit sheet restores the app when it closes, so this runs a
-    /// second after the sale. `emitIfNew` dedupes on the transaction id, so nothing is sent twice.
+    /// Re-read every transaction the device knows about. Needed because a purchase the app makes itself
+    /// is returned in its own `PurchaseResult` and never appears in `Transaction.updates`.
     func rescan() {
         #if canImport(StoreKit)
         if #available(iOS 15.0, macOS 12.0, *) {
@@ -97,7 +58,7 @@ final class StoreKitObserver {
         case alreadyRunning
     }
 
-    /// Take the sweep, or record that one more is owed. Synchronous ON PURPOSE — see `sweepAll`.
+    /// Take the sweep, or record that one more is owed.
     private func claimSweep() -> SweepClaim {
         lock.lock(); defer { lock.unlock() }
         if sweeping { pendingSweep = true; return .alreadyRunning }
@@ -116,21 +77,15 @@ final class StoreKitObserver {
     }
 
     #if canImport(StoreKit)
-    /// One pass over `Transaction.all`, serialized against every other pass. Returns immediately if a
-    /// sweep is already running, having marked that one more is owed.
+    /// One pass over `Transaction.all`, serialized against every other pass.
     ///
-    /// The locking lives in `claimSweep`/`finishSweepPass` rather than inline here because `NSLock.lock()`
-    /// is unavailable from an async context — a warning today and an error in the Swift 6 language mode.
-    /// The compiler's objection is to holding a lock ACROSS a suspension point, which would block a
-    /// cooperative thread and can deadlock the pool; confining each critical section to a synchronous
-    /// function makes it structurally impossible rather than merely true today. Note the `await` below
-    /// sits between the two calls, never inside either.
+    /// The locking lives in `claimSweep`/`finishSweepPass` because a lock must never be held across an
+    /// `await` — note the `await` below sits between the two calls, never inside either.
     @available(iOS 15.0, macOS 12.0, *)
     private func sweepAll(rateLimited: Bool = false) async {
         guard case .owned(let lastEndedAt) = claimSweep() else { return }
 
-        // Waiting while HOLDING the claim is deliberate: foregrounds arriving during the wait collapse
-        // into the one pass already owed rather than queueing up behind it.
+        // Waiting while holding the claim collapses foregrounds arriving during the wait into this pass.
         if rateLimited, let lastEndedAt {
             let remaining = Self.minSweepInterval - Date().timeIntervalSince(lastEndedAt)
             if remaining > 0 { try? await Task.sleep(nanoseconds: UInt64(remaining * 1_000_000_000)) }
@@ -151,8 +106,7 @@ final class StoreKitObserver {
         return claimed.insert(id).inserted
     }
 
-    /// Hand an id back after a report FAILED, so a later sweep in this same session can retry it —
-    /// otherwise a transient network error would wait for the next cold launch to be replayed.
+    /// Hand an id back after a report failed, so a later sweep this session can retry it.
     func release(_ id: String) {
         lock.lock(); defer { lock.unlock() }
         claimed.remove(id)
@@ -162,16 +116,10 @@ final class StoreKitObserver {
         #if canImport(StoreKit)
         if #available(iOS 15.0, macOS 12.0, *) {
             task = Task.detached { [weak self] in
-                // 1. Backfill: every transaction the device knows about, with its real dates.
+                // Backfill first, then live transactions for the app's lifetime.
                 await self?.sweepAll()
-                // 2. Live: new transactions (renewals/refunds) for the app's lifetime.
-                //
-                // NEVER call `tx.finish()` here. Finishing is the APP's statement that it has delivered
-                // what the customer paid for, and it is what stops StoreKit re-delivering the transaction
-                // on the next launch. An analytics SDK cannot know whether the app has granted anything,
-                // so finishing on its behalf removes the host app's safety net — a consumable that the app
-                // would have credited from `Transaction.unfinished` after a crash or a kill is simply gone,
-                // and the customer has paid for nothing. Observing is all this loop may do.
+                // NEVER call `tx.finish()` here: finishing is the host app's statement that it delivered
+                // the purchase, and it stops StoreKit re-delivering the transaction on the next launch.
                 for await update in Transaction.updates {
                     guard case .verified(let tx) = update else { continue }
                     self?.emitIfNew(tx)
@@ -185,9 +133,9 @@ final class StoreKitObserver {
     @available(iOS 15.0, macOS 12.0, *)
     private func emitIfNew(_ tx: Transaction) {
         let txId = String(tx.id)
-        guard !Storage.hasSentTransaction(txId) else { return } // already reported (belt-and-suspenders with backend dedup)
-        guard claim(txId) else { return }                       // a concurrent sweep already has this one
-        // Read the shared fields ONCE, through the lock, into locals — every use below is of the local.
+        guard !Storage.hasSentTransaction(txId) else { return }
+        guard claim(txId) else { return }
+        // Read shared fields once, through the lock, into locals.
         guard let emit = onTransaction else { release(txId); return }
         let resolvedEnvironment = environment
 
@@ -199,39 +147,29 @@ final class StoreKitObserver {
         } else {
             type = tx.originalID == tx.id ? .purchase : .renewal
         }
-        // Prefer the transaction's OWN environment (authoritative, per-transaction) when the OS exposes
-        // it; otherwise fall back to the app-level environment resolved via AppTransaction.
-        // StoreKit knows exactly which kind of product this is; we were throwing that away. nonRenewable
-        // maps to subscription because it IS one — a fixed-term subscription that simply does not
-        // auto-renew — and grouping it with one-off purchases would misreport it just as badly.
+        // Product kind straight from StoreKit. Non-renewable maps to subscription because it is one:
+        // a fixed-term subscription that does not auto-renew.
         let purchaseType: String
         switch tx.productType {
         case .consumable:    purchaseType = "consumable"
         case .nonConsumable: purchaseType = "non_consumable"
         default:             purchaseType = "subscription" // .autoRenewable, .nonRenewable
         }
+        // Prefer the transaction's own environment where the OS exposes it.
         var txEnv = resolvedEnvironment
         if #available(iOS 16.0, macOS 13.0, tvOS 16.0, watchOS 9.0, *) {
             txEnv = tx.environment == .production ? "production" : "sandbox"
         }
-        // NEVER `tx.currencyCode` above iOS 15 — it faults.
-        //
-        // Below iOS 17.2 neither property is stored: both parse the raw JWS by keypath, and the two
-        // transforms differ. `currency` maps through an Optional and yields nil for a field it cannot
-        // read; `currencyCode` passes `String.init` directly, which can dereference null on those OS
-        // versions.
-        //
-        // From iOS 17.2 both are just a stored property, so this costs nothing there. `currency` is
-        // iOS 16+ and back-deployed, so iOS 15 keeps the old call — the only OS with no alternative, and
-        // one that reaches a different accessor entirely.
+        // NEVER read `tx.currencyCode` above iOS 15 — on those versions it can dereference null.
+        // `tx.currency` is iOS 16+ and back-deployed; iOS 15 keeps the old call.
         let currency: String?
         if #available(iOS 16.0, macOS 13.0, tvOS 16.0, watchOS 9.0, *) {
             currency = tx.currency?.identifier
         } else {
             currency = tx.currencyCode
         }
-        // NB: do NOT mark sent here — the Runtime marks it only after the POST succeeds, so a failed
-        // report is replayed from `Transaction.all` on the next launch instead of being lost.
+        // Not marked sent here: the Runtime marks it only after the POST succeeds, so a failed report
+        // replays from `Transaction.all` on the next launch.
         emit(ObservedTransaction(
             transactionId: txId,
             originalTxnId: String(tx.originalID),
@@ -259,11 +197,6 @@ struct ObservedTransaction {
     let currency: String?
     let occurredAt: Date?
     let environment: String
-    /// What KIND of purchase this is, straight from StoreKit rather than assumed.
-    ///
-    /// The SDK reported every purchase as "subscription" — hard-coded — so a lifetime unlock or a coin
-    /// pack arrived looking like a recurring subscription. That is wrong in the optimistic direction:
-    /// a one-time payment counted as recurring inflates LTV projections and appears in churn and renewal
-    /// metrics it has no business in.
+    /// consumable / non_consumable / subscription, straight from StoreKit rather than assumed.
     let purchaseType: String
 }

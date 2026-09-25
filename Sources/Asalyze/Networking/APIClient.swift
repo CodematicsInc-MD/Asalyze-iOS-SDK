@@ -11,15 +11,9 @@ actor APIClient {
         self.session = session
     }
 
-    /// Ingest event variants → POST /v1/event.
-    ///
-    /// Ad revenue only: StoreKit purchases are observed automatically, so the SDK offers no manual
-    /// purchase call. The REST endpoint accepts type 'iap' for server-to-server integrations, which is
-    /// an API contract rather than an SDK one.
+    /// Ingest event variants → POST /v1/event. Ad revenue only: purchases are observed automatically.
     enum Event {
-        // region travels WITH the impression, not with the install: eCPM is set by where the ad was
-        // actually served, and a user who installed in one country and is now in another would otherwise
-        // have every impression priced against a stale geography.
+        /// `region` travels with the impression, not the install — eCPM follows where the ad was served.
         case ad(installId: String, value: Double, currency: String, format: AdFormat, region: String?)
     }
 
@@ -40,8 +34,7 @@ actor APIClient {
         if let legacyReceipt { body["legacyReceipt"] = legacyReceipt }
         if let appTransactionJws { body["appTransactionJws"] = appTransactionJws }
         if let sdkVersion { body["sdkVersion"] = sdkVersion }
-        // Only when the app has already told us — registration usually runs before anyone has signed in,
-        // and the server treats this endpoint as fill-only so a blank launch cannot erase a known id.
+        // Only when the app has already set one; this endpoint is fill-only server-side.
         if let userId { body["userId"] = userId }
         // Only when there is no token — a reason beside a working token would read as a failure.
         if attributionToken == nil, let tokenError { body["tokenError"] = tokenError }
@@ -64,9 +57,8 @@ actor APIClient {
         await post("/v1/custom-event", body)
     }
 
-    /// Returns whether the report landed (2xx). The caller only marks the transaction as "sent" on
-    /// success, so a failed POST is retried from `Transaction.all` on the next launch (StoreKit keeps
-    /// every transaction, so it's a durable retry queue; the backend dedups on `transactionId`).
+    /// Returns whether the report landed (2xx), so the caller marks the transaction sent only on
+    /// success and a failed POST replays from `Transaction.all` next launch.
     @discardableResult
     func recordSubscription(_ tx: ObservedTransaction, installId: String) async -> Bool {
         var body: [String: Any] = ["installId": installId, "originalTxnId": tx.originalTxnId,
@@ -81,17 +73,9 @@ actor APIClient {
         return await post("/v1/subscription", body)
     }
 
-    /// "This device still has the app" → POST /v1/ping.
-    ///
-    /// Deliberately the smallest possible call: an install id and nothing else. It exists so that
-    /// last-seen means last USE rather than last cold launch — registerInstall only runs at startup, so
-    /// a user who never force-quits could open the app daily for a month and still look lapsed.
-    ///
-    /// It does NOT detect uninstalls, and must never be presented as if it did. Silence means the app
-    /// was not opened; whether it is still installed is a different question this cannot answer.
-    /// `userId` is sent only when the app has called `setUserId` this session. It is written verbatim by
-    /// the server, so an empty string means "signed out" — which is why this takes `String?` for "nothing
-    /// to say" and treats "" as a real value, rather than collapsing the two.
+    /// "The app was opened" → POST /v1/ping, so last-seen means last use rather than last cold launch.
+    /// It does not detect uninstalls. `userId` is sent only when the app has set one; an empty string
+    /// means signed out, which is why `nil` ("nothing to say") and "" are kept apart.
     func ping(installId: String, userId: String? = nil) async {
         var body: [String: Any] = ["installId": installId]
         if let userId { body["userId"] = userId }
@@ -107,10 +91,8 @@ actor APIClient {
         req.httpMethod = "POST"
         req.setValue("application/json", forHTTPHeaderField: "Content-Type")
         req.setValue(config.apiKey, forHTTPHeaderField: "X-API-Key")
-        // Checked, not attempted: JSONSerialization RAISES an ObjC exception on a value it cannot encode
-        // (a non-finite Double is the realistic one) rather than throwing a Swift error, so `try?` would
-        // not catch it and the host app would be terminated by an SDK doing analytics. Callers screen
-        // their numbers; this is the backstop that guarantees no input can ever reach that raise.
+        // Checked rather than attempted: JSONSerialization raises an ObjC exception on a value it cannot
+        // encode, which `try?` cannot catch and which would terminate the host app.
         guard JSONSerialization.isValidJSONObject(body),
               let payload = try? JSONSerialization.data(withJSONObject: body) else {
             NSLog("[Asalyze] POST \(path) skipped: body could not be encoded as JSON")

@@ -53,11 +53,8 @@ enum Storage {
     //     the backend also dedups on transactionId, this just avoids redundant network calls). ---
     private static let sentTxnsKey = "com.asalyze.sentTransactionIds"
 
-    /// UserDefaults is itself thread-safe, but `markTransactionSent` is a read-modify-WRITE spread over
-    /// three separate calls to it. Two threads can both read the same array, each append their own id,
-    /// and the second write erase the first — so an id is silently dropped and that purchase is re-sent
-    /// on every launch from then on, which is the exact redundant traffic this cache exists to prevent.
-    /// Concurrent reporting is normal here (see StoreKitObserver's sweeps), so the sequence needs a lock.
+    /// `markTransactionSent` is a read-modify-write over UserDefaults, and concurrent reporting is normal
+    /// here, so the sequence needs a lock or one thread's id is lost.
     private static let sentTxnsLock = NSLock()
 
     static func hasSentTransaction(_ id: String) -> Bool {
