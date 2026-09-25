@@ -10,7 +10,7 @@ against them. No IDFA and no ATT prompt.
 
 ```yaml
 dependencies:
-  asalyze: ^3.1.9
+  asalyze: ^3.2.0
 ```
 
 Or `flutter pub add asalyze`, then `flutter pub get` and `pod install` from `ios/`.

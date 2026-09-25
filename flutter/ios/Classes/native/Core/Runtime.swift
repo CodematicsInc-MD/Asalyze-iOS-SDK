@@ -7,7 +7,7 @@ import UIKit
 /// attribution capture and the StoreKit observer. Kept `internal` so the public surface stays small.
 
 /// The SDK's own version, reported with every install.
-let asalyzeSDKVersion = "3.1.9"
+let asalyzeSDKVersion = "3.2.0"
 
 final class Runtime {
     let config: Config

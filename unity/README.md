@@ -18,10 +18,10 @@ revenue are tracked against them. No IDFA and no ATT prompt.
 Unity ▸ Window ▸ Package Manager ▸ **+ ▸ Add package from git URL…**
 
 ```
-https://github.com/CodematicsInc-MD/Asalyze-iOS-SDK.git?path=/unity#v3.1.9
+https://github.com/CodematicsInc-MD/Asalyze-iOS-SDK.git?path=/unity#v3.2.0
 ```
 
-On your next iOS build, EDM4U adds `pod 'Asalyze', '~> 3.1.9'` and runs `pod install` automatically.
+On your next iOS build, EDM4U adds `pod 'Asalyze', '~> 3.2.0'` and runs `pod install` automatically.
 
 The native bridge imports `<Asalyze/Asalyze-Swift.h>`, so the pod must be integrated **as a framework**:
 in **Assets ▸ External Dependency Manager ▸ iOS Resolver ▸ Settings**, enable *Add use_frameworks to

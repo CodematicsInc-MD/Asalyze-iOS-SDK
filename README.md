@@ -8,23 +8,23 @@ No IDFA and no ATT prompt. iOS 15+.
 
 **Swift Package Manager**
 ```swift
-.package(url: "https://github.com/CodematicsInc-MD/Asalyze-iOS-SDK", from: "3.1.9")
+.package(url: "https://github.com/CodematicsInc-MD/Asalyze-iOS-SDK", from: "3.2.0")
 ```
 
 **CocoaPods**
 ```ruby
-pod 'Asalyze', '~> 3.1.9'
+pod 'Asalyze', '~> 3.2.0'
 ```
 
 **Flutter** — [pub.dev/packages/asalyze](https://pub.dev/packages/asalyze)
 ```yaml
 dependencies:
-  asalyze: ^3.1.9
+  asalyze: ^3.2.0
 ```
 
 **Unity** — Package Manager ▸ Add package from git URL
 ```
-https://github.com/CodematicsInc-MD/Asalyze-iOS-SDK.git?path=/unity#v3.1.9
+https://github.com/CodematicsInc-MD/Asalyze-iOS-SDK.git?path=/unity#v3.2.0
 ```
 
 ## Use

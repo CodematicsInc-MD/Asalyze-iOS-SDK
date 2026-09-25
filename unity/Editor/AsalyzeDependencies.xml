@@ -11,7 +11,7 @@
 -->
 <dependencies>
   <iosPods>
-    <iosPod name="Asalyze" version="~> 3.1.9" minTargetSdk="15.0" addToAllTargets="false">
+    <iosPod name="Asalyze" version="~> 3.2.0" minTargetSdk="15.0" addToAllTargets="false">
       <sources>
         <source>https://github.com/CocoaPods/Specs</source>
       </sources>
